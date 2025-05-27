@@ -1,5 +1,5 @@
 Material: SquirtleTongue
-BaseColor: ChareyeAO.png
+BaseColor: SquirtleTongueTexture.png
 Normal: None
 Roughness: None
 Metallic: None

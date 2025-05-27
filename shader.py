@@ -23,9 +23,16 @@ in vec2 TexCoord;
 out vec4 FragColor;
 
 uniform sampler2D texture_diffuse;
+uniform bool emissiveGlow;
 
 void main() {
-    FragColor = texture(texture_diffuse, TexCoord);
+    vec4 baseColor = texture(texture_diffuse, TexCoord);
+
+    if (emissiveGlow) {
+        baseColor.rgb += vec3(1.0, 0.5, 0.0); // Add orange glow
+    }
+
+    FragColor = baseColor;
 }
 """
 

@@ -13,6 +13,8 @@ from bg_loader import create_bg_shader_program
 
 def main():
     pygame.init()
+    pygame.mixer.init()
+
     display = (config.DISPLAY_WIDTH, config.DISPLAY_HEIGHT)
     pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
     pygame.display.set_caption(config.WINDOW_TITLE)
@@ -84,6 +86,23 @@ def main():
     clock = pygame.time.Clock()
     running = True
 
+    # Glow timers
+    glow_states = {
+        "Charmander": 0,
+        "Bulbasaur": 0,
+        "Squirtle": 0,
+    }
+
+    def trigger(name, sound_file):
+        pygame.mixer.music.stop()
+        pygame.mixer.music.load(f"source/{sound_file}")
+        pygame.mixer.music.play()
+        glow_states[name] = pygame.time.get_ticks() + 500  # glow 0.5 seconds
+    
+    charizard_parts = {"Charmander", "CharmanderEyes", "Fire"}
+    bulbasaur_parts = {"Bulbasaur", "BulbasaurEyes", "BulbasaurTongue"}
+    squirtle_parts = {"Squirtle", "SquirtleEyes", "SquirtleTongue"}
+        
     while running:
         clock.tick(60)
         for event in pygame.event.get():
@@ -96,6 +115,12 @@ def main():
                     with open("view_log.txt", "a") as log:
                         log.write(view_info + "\n")
                     print("Saved to view_log.txt")
+                if event.key == pygame.K_c:
+                    trigger("Charmander", "charmander.mp3")
+                elif event.key == pygame.K_b:
+                    trigger("Bulbasaur", "bulba.mp3")
+                elif event.key == pygame.K_s:
+                    trigger("Squirtle", "squirtle.mp3")
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 4:
                     camera_distance = max(1.0, camera_distance - 0.5)
@@ -152,7 +177,23 @@ def main():
                 model_matrix = glm.translate(model_matrix, glm.vec3(0, bounce, 0))
 
             glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm.value_ptr(model_matrix))
+
+            # Glow check
+            emissive_loc = glGetUniformLocation(shader_program, "emissiveGlow")
+            should_glow = 0
+            now = pygame.time.get_ticks()
+            if any(part in obj.name and now < glow_states[key]
+                   for key, parts in {
+                       "Charmander": charizard_parts,
+                       "Bulbasaur": bulbasaur_parts,
+                       "Squirtle": squirtle_parts
+                   }.items()
+                   for part in parts):
+                should_glow = 1
+            glUniform1i(emissive_loc, should_glow)
+
             obj.draw(shader_program, config.TEXTURE_UNITS)
+
 
         pygame.display.flip()
 

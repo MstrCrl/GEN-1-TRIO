@@ -1,5 +1,5 @@
 Material: Claws
-BaseColor: ChareyeAO.png
+BaseColor: ClawsTexture.png
 Normal: None
 Roughness: None
 Metallic: None

@@ -1,5 +1,5 @@
 Material: BulbasaurTongue
-BaseColor: ChareyeAO.png
+BaseColor:BulbasaurTongueTexture.png
 Normal: None
 Roughness: None
 Metallic: None

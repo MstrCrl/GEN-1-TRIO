@@ -2,12 +2,14 @@
 import os
 import numpy as np
 from OpenGL.GL import *
+import glm
 
 class SceneObject:
     def __init__(self, name, vertices, indices, textures):
         self.name = name
         self.vertex_count = len(indices)
         self.textures = textures
+        self.center = glm.vec3(0, 0, 0)  # Default center
 
         self.VAO = glGenVertexArrays(1)
         self.VBO = glGenBuffers(1)
