@@ -79,13 +79,19 @@ def main():
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, glm.value_ptr(projection))
     glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm.value_ptr(view))
 
-    camera_distance = 30
-    rot_x, rot_y = 62, 105
+    camera_distance = 35.00
+    rot_x, rot_y = 78.00, 115.00
+    rot_2 = 107
     last_mouse_pos = (0, 0)
     mouse_down = False
 
     clock = pygame.time.Clock()
     running = True
+    
+    pygame.mixer.music.load(f"source/mata.mp3")
+    pygame.mixer.music.play(-1)
+    pygame.mixer.music.set_volume(40)
+
 
     glow_states = {
         "Charmander": 0,
@@ -114,11 +120,11 @@ def main():
                     print(view_info)
                     with open("view_log.txt", "a") as log:
                         log.write(view_info + "\n")
-                if event.key == pygame.K_c:
+                if event.key == pygame.K_1:
                     trigger("Charmander", "charmander.mp3")
-                elif event.key == pygame.K_b:
+                elif event.key == pygame.K_2:
                     trigger("Bulbasaur", "bulba.mp3")
-                elif event.key == pygame.K_s:
+                elif event.key == pygame.K_3:
                     trigger("Squirtle", "squirtle.mp3")
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 4:
@@ -164,46 +170,62 @@ def main():
 
         for obj in objects:
             model_matrix = glm.mat4(1.0)
-            model_matrix = glm.rotate(model_matrix, glm.radians(rot_x), glm.vec3(1, 0, 0))
-            model_matrix = glm.rotate(model_matrix, glm.radians(rot_y), glm.vec3(0, 1, 0))
 
+            # Apply rotation only to spw_gradient
+            if obj.name == "spw_gradient":  
+                rot_2 += 0.1
+                model_matrix = glm.rotate(model_matrix, glm.radians(90), glm.vec3(1, 0, 0))
+                model_matrix = glm.rotate(model_matrix, glm.radians(rot_2), glm.vec3(0, 1, 0))  # Apply this rotation to spw_gradient only
+            elif obj.name != "spw_gradient":
+                # For all other objects, do not update rot_y
+                model_matrix = glm.rotate(model_matrix, glm.radians(rot_x), glm.vec3(1, 0, 0))
+                model_matrix = glm.rotate(model_matrix, glm.radians(rot_y), glm.vec3(0, 1, 0))  # Regular rotation for other objects
+
+            # Apply bounce effect for other objects
             exclude_names = ["Grass", "Stage", "Rock", "Grass.001", "Grass.002", "Grass.003", "Grass.004", "Grass.005", "Grass.006"]
             if not any(name in obj.name for name in exclude_names):
                 bounce = 0.03 * glm.sin(time * 4.0)
                 model_matrix = glm.translate(model_matrix, glm.vec3(0, bounce, 0))
 
+            # Apply specific bounce effect for spw_gradient
+            if obj.name == "spw_gradient":
+                bounce = 0.1 * glm.sin(time * 3.0)
+                model_matrix = glm.translate(model_matrix, glm.vec3(0, bounce, 0))
+
             glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm.value_ptr(model_matrix))
 
             emissive = False
-            glow_color = glm.vec3(0) 
+            glow_color = glm.vec3(0)
 
+            # Glow logic for other objects
             if obj.name == "Charmander":
                 emissive = True
-                glow_color = glm.vec3(1.0, 0.0, 0.0) *0.1
+                glow_color = glm.vec3(1.0, 0.0, 0.0) * 0.1
             elif obj.name == "Bulbasaur":
                 emissive = True
-                glow_color = glm.vec3(0.0, 1.0, 0.0) *0.1
-            elif obj.name =="Squirtle":
+                glow_color = glm.vec3(0.0, 1.0, 0.0) * 0.1
+            elif obj.name == "Squirtle":
                 emissive = True
-                glow_color = glm.vec3(0.0, 0.4, 1.0) *0.1
+                glow_color = glm.vec3(0.0, 0.4, 1.0) * 0.1
             elif obj.name == "Fire":
                 emissive = True
                 glow_color = glm.vec3(1.0, 0.0, 0.0)
-                
+
             if obj.name in charizard_parts and now < glow_states["Charmander"]:
                 emissive = True
-                glow_color = glm.vec3(1.0, 0.0, 0.0) *0.3
+                glow_color = glm.vec3(1.0, 0.0, 0.0) * 0.3
             elif obj.name in bulbasaur_parts and now < glow_states["Bulbasaur"]:
                 emissive = True
-                glow_color = glm.vec3(0.0, 1.0, 0.0) *0.2
+                glow_color = glm.vec3(0.0, 1.0, 0.0) * 0.2
             elif obj.name in squirtle_parts and now < glow_states["Squirtle"]:
                 emissive = True
-                glow_color = glm.vec3(0.0, 0.4, 1.0) *0.3
+                glow_color = glm.vec3(0.0, 0.4, 1.0) * 0.3
 
             glUniform1i(emissive_loc, int(emissive))
             glUniform3fv(emissive_col_loc, 1, glm.value_ptr(glow_color))
 
             obj.draw(shader_program, config.TEXTURE_UNITS)
+
 
         pygame.display.flip()
 
