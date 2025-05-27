@@ -9,7 +9,7 @@ from model_loader import load_model_from_txt
 from texture_loader import load_texture
 from shader import create_shader_program
 from bg_loader import create_bg_shader_program
-import time
+
 
 def main():
     pygame.init()
@@ -70,7 +70,6 @@ def main():
 
     projection = glm.perspective(glm.radians(config.FOV), display[0] / display[1], config.NEAR_PLANE, config.FAR_PLANE)
     view = glm.lookAt(config.CAMERA_POS, config.CAMERA_TARGET, config.CAMERA_UP)
-    model = glm.mat4(1.0)
 
     proj_loc = glGetUniformLocation(shader_program, "projection")
     view_loc = glGetUniformLocation(shader_program, "view")
@@ -87,12 +86,9 @@ def main():
 
     clock = pygame.time.Clock()
     running = True
-    start_time = time.time()  # Start the timer for time-based animations
 
     while running:
         clock.tick(60)
-        time_elapsed = time.time() - start_time  # Calculate the elapsed time
-
         for event in pygame.event.get():
             if event.type == QUIT:
                 running = False
@@ -159,14 +155,6 @@ def main():
         glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm.value_ptr(rot_model))
         
         for obj in objects:
-            # Bouncing effect for all except grass.txt and rock.txt
-            name = getattr(obj, 'source_path', '').lower()
-            if "grass.txt" not in name and "rock.txt" not in name:
-                bounce = 0.1 * glm.sin(time_elapsed * 3.0)  # Modify the speed and amplitude
-                model_matrix = glm.translate(glm.mat4(1.0), glm.vec3(0, bounce, 0))
-            else:
-                model_matrix = glm.mat4(1.0)
-
             obj.draw(shader_program, config.TEXTURE_UNITS)
 
         pygame.display.flip()
