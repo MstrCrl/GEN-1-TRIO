@@ -73,11 +73,12 @@ def main():
     proj_loc = glGetUniformLocation(shader_program, "projection")
     view_loc = glGetUniformLocation(shader_program, "view")
     model_loc = glGetUniformLocation(shader_program, "model")
+    emissive_loc = glGetUniformLocation(shader_program, "emissiveGlow")
+    emissive_col_loc = glGetUniformLocation(shader_program, "emissiveColor")
 
     glUniformMatrix4fv(proj_loc, 1, GL_FALSE, glm.value_ptr(projection))
     glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm.value_ptr(view))
 
-    # Camera and rotation state
     camera_distance = 30
     rot_x, rot_y = 62, 105
     last_mouse_pos = (0, 0)
@@ -86,7 +87,6 @@ def main():
     clock = pygame.time.Clock()
     running = True
 
-    # Glow timers
     glow_states = {
         "Charmander": 0,
         "Bulbasaur": 0,
@@ -97,12 +97,12 @@ def main():
         pygame.mixer.music.stop()
         pygame.mixer.music.load(f"source/{sound_file}")
         pygame.mixer.music.play()
-        glow_states[name] = pygame.time.get_ticks() + 500  # glow 0.5 seconds
-    
-    charizard_parts = {"Charmander", "CharmanderEyes", "Fire"}
-    bulbasaur_parts = {"Bulbasaur", "BulbasaurEyes", "BulbasaurTongue"}
-    squirtle_parts = {"Squirtle", "SquirtleEyes", "SquirtleTongue"}
-        
+        glow_states[name] = pygame.time.get_ticks() + 1500
+
+    charizard_parts = {"Charmander", "Fire"}
+    bulbasaur_parts = {"Bulbasaur"}
+    squirtle_parts = {"Squirtle"}
+
     while running:
         clock.tick(60)
         for event in pygame.event.get():
@@ -114,7 +114,6 @@ def main():
                     print(view_info)
                     with open("view_log.txt", "a") as log:
                         log.write(view_info + "\n")
-                    print("Saved to view_log.txt")
                 if event.key == pygame.K_c:
                     trigger("Charmander", "charmander.mp3")
                 elif event.key == pygame.K_b:
@@ -140,23 +139,19 @@ def main():
                 rot_x += dy * 0.5
                 last_mouse_pos = (x, y)
 
-        # --- Render background ---
         glClear(GL_COLOR_BUFFER_BIT)
         glDisable(GL_DEPTH_TEST)
 
         glUseProgram(bg_shader_program)
         glBindVertexArray(bg_VAO)
-
         glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, bg_texture)
         bg_tex_loc = glGetUniformLocation(bg_shader_program, "backgroundTexture")
         glUniform1i(bg_tex_loc, 0)
         glDrawArrays(GL_TRIANGLES, 0, 6)
-
         glBindTexture(GL_TEXTURE_2D, 0)
         glBindVertexArray(0)
 
-        # --- Render 3D scene ---
         glEnable(GL_DEPTH_TEST)
         glClear(GL_DEPTH_BUFFER_BIT)
 
@@ -164,7 +159,8 @@ def main():
         glUseProgram(shader_program)
         glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm.value_ptr(view))
 
-        time = pygame.time.get_ticks() / 1000.0  # Seconds
+        time = pygame.time.get_ticks() / 1000.0
+        now = pygame.time.get_ticks()
 
         for obj in objects:
             model_matrix = glm.mat4(1.0)
@@ -178,26 +174,39 @@ def main():
 
             glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm.value_ptr(model_matrix))
 
-            # Glow check
-            emissive_loc = glGetUniformLocation(shader_program, "emissiveGlow")
-            should_glow = 0
-            now = pygame.time.get_ticks()
-            if any(part in obj.name and now < glow_states[key]
-                   for key, parts in {
-                       "Charmander": charizard_parts,
-                       "Bulbasaur": bulbasaur_parts,
-                       "Squirtle": squirtle_parts
-                   }.items()
-                   for part in parts):
-                should_glow = 1
-            glUniform1i(emissive_loc, should_glow)
+            emissive = False
+            glow_color = glm.vec3(0) 
+
+            if obj.name == "Charmander":
+                emissive = True
+                glow_color = glm.vec3(1.0, 0.0, 0.0) *0.1
+            elif obj.name == "Bulbasaur":
+                emissive = True
+                glow_color = glm.vec3(0.0, 1.0, 0.0) *0.1
+            elif obj.name =="Squirtle":
+                emissive = True
+                glow_color = glm.vec3(0.0, 0.4, 1.0) *0.1
+            elif obj.name == "Fire":
+                emissive = True
+                glow_color = glm.vec3(1.0, 0.0, 0.0)
+                
+            if obj.name in charizard_parts and now < glow_states["Charmander"]:
+                emissive = True
+                glow_color = glm.vec3(1.0, 0.0, 0.0) *0.3
+            elif obj.name in bulbasaur_parts and now < glow_states["Bulbasaur"]:
+                emissive = True
+                glow_color = glm.vec3(0.0, 1.0, 0.0) *0.2
+            elif obj.name in squirtle_parts and now < glow_states["Squirtle"]:
+                emissive = True
+                glow_color = glm.vec3(0.0, 0.4, 1.0) *0.3
+
+            glUniform1i(emissive_loc, int(emissive))
+            glUniform3fv(emissive_col_loc, 1, glm.value_ptr(glow_color))
 
             obj.draw(shader_program, config.TEXTURE_UNITS)
 
-
         pygame.display.flip()
 
-    # Cleanup
     for obj in objects:
         glDeleteVertexArrays(1, [obj.VAO])
         glDeleteBuffers(1, [obj.VBO])
