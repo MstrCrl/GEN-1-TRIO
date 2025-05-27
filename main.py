@@ -20,7 +20,7 @@ def main():
     glEnable(GL_DEPTH_TEST)
 
     # Load background image as OpenGL texture
-    bg_surface = pygame.image.load("bg.jpg").convert_alpha()
+    bg_surface = pygame.image.load("source/bg.jpg").convert_alpha()
     bg_width, bg_height = bg_surface.get_size()
     bg_data = pygame.image.tostring(bg_surface, "RGBA", True)
 
@@ -37,21 +37,18 @@ def main():
 
     # Setup fullscreen quad for background
     quad_vertices = np.array([
-        # positions    # texCoords
-        -1.0,  1.0,    0.0, 1.0,  # top-left
-        -1.0, -1.0,    0.0, 0.0,  # bottom-left
-         1.0, -1.0,    1.0, 0.0,  # bottom-right
-
-        -1.0,  1.0,    0.0, 1.0,  # top-left
-         1.0, -1.0,    1.0, 0.0,  # bottom-right
-         1.0,  1.0,    1.0, 1.0   # top-right
+        -1.0,  1.0,    0.0, 1.0,
+        -1.0, -1.0,    0.0, 0.0,
+         1.0, -1.0,    1.0, 0.0,
+        -1.0,  1.0,    0.0, 1.0,
+         1.0, -1.0,    1.0, 0.0,
+         1.0,  1.0,    1.0, 1.0
     ], dtype=np.float32)
 
     bg_VAO = glGenVertexArrays(1)
     bg_VBO = glGenBuffers(1)
 
     glBindVertexArray(bg_VAO)
-
     glBindBuffer(GL_ARRAY_BUFFER, bg_VBO)
     glBufferData(GL_ARRAY_BUFFER, quad_vertices.nbytes, quad_vertices, GL_STATIC_DRAW)
 
@@ -63,7 +60,7 @@ def main():
     glBindBuffer(GL_ARRAY_BUFFER, 0)
     glBindVertexArray(0)
 
-    # Load your 3D model objects as before
+    # Load 3D model objects
     shader_program = create_shader_program()
     glUseProgram(shader_program)
     objects = load_model_from_txt("materials", load_texture)
@@ -95,27 +92,21 @@ def main():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_p:
                     view_info = f"Zoom: {camera_distance:.2f}, rot_x: {rot_x:.2f}, rot_y: {rot_y:.2f}"
-                    print(view_info)  # Print to terminal
-
+                    print(view_info)
                     with open("view_log.txt", "a") as log:
                         log.write(view_info + "\n")
                     print("Saved to view_log.txt")
-            # Zoom and rotate with mouse
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 4:  # Scroll up (zoom in)
-                    camera_distance -= 0.5
-                    camera_distance = max(1.0, camera_distance)
-                elif event.button == 5:  # Scroll down (zoom out)
+                if event.button == 4:
+                    camera_distance = max(1.0, camera_distance - 0.5)
+                elif event.button == 5:
                     camera_distance += 0.5
-
-                if event.button == 1:  # Left click (rotate)
+                if event.button == 1:
                     mouse_down = True
                     last_mouse_pos = pygame.mouse.get_pos()
-
             if event.type == pygame.MOUSEBUTTONUP:
-                if event.button == 1:  # Left click release
+                if event.button == 1:
                     mouse_down = False
-
             if event.type == pygame.MOUSEMOTION and mouse_down:
                 x, y = pygame.mouse.get_pos()
                 dx = x - last_mouse_pos[0]
@@ -124,9 +115,9 @@ def main():
                 rot_x += dy * 0.5
                 last_mouse_pos = (x, y)
 
-        # --- Render background first ---
-        glClear(GL_COLOR_BUFFER_BIT)  # Only clear color buffer for background
-        glDisable(GL_DEPTH_TEST)      # Disable depth test for background
+        # --- Render background ---
+        glClear(GL_COLOR_BUFFER_BIT)
+        glDisable(GL_DEPTH_TEST)
 
         glUseProgram(bg_shader_program)
         glBindVertexArray(bg_VAO)
@@ -135,26 +126,32 @@ def main():
         glBindTexture(GL_TEXTURE_2D, bg_texture)
         bg_tex_loc = glGetUniformLocation(bg_shader_program, "backgroundTexture")
         glUniform1i(bg_tex_loc, 0)
-
         glDrawArrays(GL_TRIANGLES, 0, 6)
 
         glBindTexture(GL_TEXTURE_2D, 0)
         glBindVertexArray(0)
 
-        # --- Now render 3D scene ---
+        # --- Render 3D scene ---
         glEnable(GL_DEPTH_TEST)
-        glClear(GL_DEPTH_BUFFER_BIT)  # Clear depth buffer before 3D draw
+        glClear(GL_DEPTH_BUFFER_BIT)
 
         view = glm.lookAt(glm.vec3(0, camera_distance, 0), config.CAMERA_TARGET, config.CAMERA_UP)
         glUseProgram(shader_program)
         glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm.value_ptr(view))
 
-        rot_model = glm.mat4(1.0)
-        rot_model = glm.rotate(rot_model, glm.radians(rot_x), glm.vec3(1, 0, 0))
-        rot_model = glm.rotate(rot_model, glm.radians(rot_y), glm.vec3(0, 1, 0))
-        glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm.value_ptr(rot_model))
-        
+        time = pygame.time.get_ticks() / 1000.0  # Seconds
+
         for obj in objects:
+            model_matrix = glm.mat4(1.0)
+            model_matrix = glm.rotate(model_matrix, glm.radians(rot_x), glm.vec3(1, 0, 0))
+            model_matrix = glm.rotate(model_matrix, glm.radians(rot_y), glm.vec3(0, 1, 0))
+
+            exclude_names = ["Grass", "Stage", "Rock", "Grass.001", "Grass.002", "Grass.003", "Grass.004", "Grass.005", "Grass.006"]
+            if not any(name in obj.name for name in exclude_names):
+                bounce = 0.03 * glm.sin(time * 4.0)
+                model_matrix = glm.translate(model_matrix, glm.vec3(0, bounce, 0))
+
+            glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm.value_ptr(model_matrix))
             obj.draw(shader_program, config.TEXTURE_UNITS)
 
         pygame.display.flip()
