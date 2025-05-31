@@ -25,7 +25,7 @@ def main():
     glEnable(GL_DEPTH_TEST)
 
     # Load background image and create OpenGL texture for it
-    bg_surface = pygame.image.load("source/bg.jpg").convert_alpha()
+    bg_surface = pygame.image.load("source/image.jpg").convert_alpha()
     bg_width, bg_height = bg_surface.get_size()
     bg_data = pygame.image.tostring(bg_surface, "RGBA", True)
 
