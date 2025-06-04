@@ -135,6 +135,16 @@ def main():
         fade_back_start_time = 0
 
         sound = pygame.mixer.Sound(f"source/{sound_file}")
+        
+        # Adjust volumes for specific sounds
+        if sound_file == "bulba.mp3":
+            sound.set_volume(1.0)  # Make Bulbasaur sound louder (volume 1.0)
+        elif sound_file == "charmander.mp3":
+            sound.set_volume(0.2)  # Make Charizard sound quieter (volume 0.2)
+        else:
+            sound.set_volume(0.5)  # Default volume for other sounds
+
+        
         effect_channel.play(sound)
 
         glow_states[name] = pygame.time.get_ticks() + 1500  # Glow lasts 1.5 seconds
